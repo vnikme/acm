@@ -8,8 +8,22 @@ struct TGraph {
     std::vector<int> Depth;
 };
 
+struct TIntervalTree {
+    int Pow2 = 0;
+    std::vector<int> Tree;
+};
 
-void ReadGraph(TGraph &g) {
+TGraph graph;
+TIntervalTree tree;
+
+
+int GreaterOrEqualPow2(int n) {
+    for (int pow2 = 0; ; ++pow2)
+        if ((1 << pow2) >= n)
+            return pow2;
+}
+
+void ReadGraph() {
     int n;
     std::cin >> n;
     std::vector<std::vector<int>> links(n);
@@ -22,81 +36,86 @@ void ReadGraph(TGraph &g) {
     std::vector<int> queue;
     queue.reserve(n - 1);
     queue.push_back(0);
-    g.Parents.resize(n);
-    g.Depth.resize(n);
-    g.Parents[0].clear();
-    g.Depth[0] = 0;
+    graph.Parents.resize(n);
+    int pow2 = GreaterOrEqualPow2(n);
+    for (int i = 0; i < n; ++i)
+        graph.Parents[i].reserve(pow2);
+    graph.Depth.resize(n);
+    graph.Parents[0].clear();
+    graph.Depth[0] = 0;
     for (size_t i = 0; i < queue.size(); ++i) {
         int current = queue[i];
         for (int child : links[current]) {
             if (child == 0)
                 continue;
-            if (!g.Parents[child].empty())
+            if (!graph.Parents[child].empty())
                 continue;
-            g.Parents[child].push_back(current);
-            g.Depth[child] = g.Depth[current] + 1;
+            graph.Parents[child].push_back(current);
+            graph.Depth[child] = graph.Depth[current] + 1;
             queue.push_back(child);
         }
     }
     for (int current : queue) {
-        for (size_t level = 0; level < g.Parents[current].size(); ++level) {
-            if (level + 1 != g.Parents[current].size())
+        for (size_t level = 0; level < graph.Parents[current].size(); ++level) {
+            if (level + 1 != graph.Parents[current].size())
                 throw 1;
-            int parent = g.Parents[current][level];
-            if (level >= g.Parents[parent].size())
+            int parent = graph.Parents[current][level];
+            if (level >= graph.Parents[parent].size())
                 break;
-            g.Parents[current].push_back(g.Parents[parent][level]);
+            graph.Parents[current].push_back(graph.Parents[parent][level]);
         }
     }
 }
 
-int GetParent(int vertex, int level, const TGraph &g) {
+int GetParent(int vertex, int level) {
     int pow2 = 0;
     while (level != 0) {
         if (level % 2 == 1)
-            vertex = g.Parents[vertex][pow2];
+            vertex = graph.Parents[vertex][pow2];
         level >>= 1;
         ++pow2;
     }
     return vertex;
 }
 
-int CommonParent(int a, int b, const TGraph &g) {
-    if (g.Depth[a] != g.Depth[b]) {
-        if (g.Depth[a] > g.Depth[b])
-            a = GetParent(a, g.Depth[a] - g.Depth[b], g);
+int FindCommonParent(int a, int b) {
+    int l = 0, r = graph.Parents[a].size() - 1, result = -1;
+    while (l <= r) {
+        int m = (l + r) / 2;
+        if (graph.Parents[a][m] != graph.Parents[b][m]) {
+            result = m;
+            l = m + 1;
+        } else {
+            r = m - 1;
+        }
+    }
+    return result;
+}
+
+int CommonParent(int a, int b) {
+    int diff = graph.Depth[a] - graph.Depth[b];
+    if (diff != 0) {
+        if (diff > 0)
+            a = GetParent(a, diff);
         else
-            b = GetParent(b, g.Depth[b] - g.Depth[a], g);
+            b = GetParent(b, -diff);
     }
     if (a == b)
         return a;
     for (;;) {
-        size_t level = 0;
-        for (; level < g.Parents[a].size() && g.Parents[a][level] != g.Parents[b][level]; ++level) {
-        }
-        if (level == 0)
-            return g.Parents[a][0];
-        a = g.Parents[a][level - 1];
-        b = g.Parents[b][level - 1];
+        int level = FindCommonParent(a, b);
+        if (level == -1)
+            return graph.Parents[a][0];
+        a = graph.Parents[a][level];
+        b = graph.Parents[b][level];
     }
 }
 
-int GreaterOrEqualPow2(int n) {
-    for (int pow2 = 0; ; ++pow2)
-        if ((1 << pow2) >= n)
-            return pow2;
-}
-
-struct TIntervalTree {
-    int Pow2 = 0;
-    std::vector<int> Tree;
-};
-
-void BuildIntervalTree(const TGraph &g, TIntervalTree &tree) {
-    tree.Pow2 = GreaterOrEqualPow2(g.Depth.size());
+void BuildIntervalTree() {
+    tree.Pow2 = GreaterOrEqualPow2(graph.Depth.size());
     tree.Tree.resize((1 << (tree.Pow2 + 1)) - 1, -1);
     int levelBegin = (1 << tree.Pow2) - 1, levelSize = (1 << tree.Pow2);
-    for (int i = 0; i < g.Parents.size(); ++i)
+    for (int i = 0; i < graph.Parents.size(); ++i)
         tree.Tree[levelBegin + i] = i;
     while(levelBegin != 0) {
         levelBegin = (levelBegin - 1) / 2;
@@ -109,12 +128,12 @@ void BuildIntervalTree(const TGraph &g, TIntervalTree &tree) {
             else if (ans1 == -1)
                 tree.Tree[levelBegin + i] = ans2;
             else
-                tree.Tree[levelBegin + i] = CommonParent(ans1, ans2, g);
+                tree.Tree[levelBegin + i] = CommonParent(ans1, ans2);
         }
     }
 }
 
-int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b, int bestKnownDepth, const TGraph &graph, const TIntervalTree &tree) {
+int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b) {
     if (a > intervalBegin + intervalSize - 1)
         return -1;
     if (b < intervalBegin)
@@ -122,44 +141,38 @@ int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, in
     int ansRoot = tree.Tree[index];
     if (ansRoot == -1)
         return -1;
-    if (bestKnownDepth != -1 && graph.Depth[ansRoot] >= bestKnownDepth)
-        return -1;
     if (intervalBegin >= a && intervalBegin + intervalSize - 1 <= b)
         return ansRoot;
-    int ans1 = DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b, bestKnownDepth, graph, tree);
-    //if (ans1 != -1 && (bestKnownDepth == -1 || graph.Depth[ans1] < bestKnownDepth))
-    //    bestKnownDepth = graph.Depth[ans1];
-    int ans2 = DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b, bestKnownDepth, graph, tree);
+    int ans1 = DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b);
+    int ans2 = DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b);
     if (ans2 == -1)
         return ans1;
     if (ans1 == -1)
         return ans2;
-    return CommonParent(ans1, ans2, graph);
+    return CommonParent(ans1, ans2);
 }
 
-int CommonParentForInterval(int a, int b, const TGraph &graph, const TIntervalTree &tree) {
-    return DoCommonParentForInterval(0, 0, (1 << tree.Pow2), a, b, -1, graph, tree);
+int CommonParentForInterval(int a, int b) {
+    return DoCommonParentForInterval(0, 0, (1 << tree.Pow2), a, b);
 }
 
-void ProcessQueries(const TGraph &graph, const TIntervalTree &tree) {
+void ProcessQueries() {
     int q;
     for (std::cin >> q; q > 0; --q) {
         int a, b;
         std::cin >> a >> b;
         --a;
         --b;
-        std::cout << CommonParentForInterval(a, b, graph, tree) + 1 << '\n';
+        std::cout << CommonParentForInterval(a, b) + 1 << '\n';
     }
 }
 
 int main() {
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
-    TGraph graph;
-    ReadGraph(graph);
-    TIntervalTree tree;
-    BuildIntervalTree(graph, tree);
-    ProcessQueries(graph, tree);
+    ReadGraph();
+    BuildIntervalTree();
+    ProcessQueries();
     return 0;
 }
 
