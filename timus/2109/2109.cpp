@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <ios>
 #include <iostream>
 #include <utility>
@@ -130,28 +131,38 @@ void BuildIntervalTree() {
     }
 }
 
-int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b) {
-    std::cout << "Interval: " << intervalBegin << ' ' << intervalBegin + intervalSize - 1 << ' ' << a << ' ' << b << std::endl;
+void DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b, std::vector<int> &tops) {
     if (a > intervalBegin + intervalSize - 1)
-        return -1;
+        return;
     if (b < intervalBegin)
-        return -1;
+        return;
     int ansRoot = Tree[index];
     if (ansRoot == -1)
-        return -1;
-    if (a <= intervalBegin && intervalBegin + intervalSize - 1 <= b)
-        return ansRoot;
-    int ans1 = DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b);
-    int ans2 = DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b);
-    if (ans2 == -1)
-        return ans1;
-    if (ans1 == -1)
-        return ans2;
-    return CommonParent(ans1, ans2);
+        return;
+    if (a <= intervalBegin && intervalBegin + intervalSize - 1 <= b) {
+        tops.push_back(ansRoot);
+        return;
+    }
+    DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b, tops);
+    DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b, tops);
 }
 
 int CommonParentForInterval(int a, int b) {
-    return DoCommonParentForInterval(0, 0, (1 << Pow2), a, b);
+    std::vector<int> tops;
+    DoCommonParentForInterval(0, 0, (1 << Pow2), a, b, tops);
+    std::sort(tops.begin(), tops.end());
+    tops.erase(std::unique(tops.begin(), tops.end()), tops.end());
+    if (Depth.size() > 1000) {
+        double n = Depth.size();
+        double m = tops.size();
+        if (m > 5 * log(n) / log(2.0))
+            throw 1;
+    }
+    int ans = tops.front();
+    for (auto it = tops.begin() + 1; ans != 0 && it != tops.end(); ++it) {
+        ans = CommonParent(ans, *it);
+    }
+    return ans;
 }
 
 void ProcessQueries() {
