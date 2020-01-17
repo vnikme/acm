@@ -76,6 +76,8 @@ int FindCommonParent(int a, int b) {
     const auto &pa = Parents[a];
     const auto &pb = Parents[b];
     int l = 0, r = pa.size() - 1, result = -1;
+    for (; r >= 0 && pa[r] == pb[r]; --r);
+    return r;
     while (l <= r) {
         int m = (l + r) / 2;
         if (pa[m] != pb[m]) {
@@ -129,6 +131,7 @@ void BuildIntervalTree() {
 }
 
 int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b) {
+    std::cout << "Interval: " << intervalBegin << ' ' << intervalBegin + intervalSize - 1 << ' ' << a << ' ' << b << std::endl;
     if (a > intervalBegin + intervalSize - 1)
         return -1;
     if (b < intervalBegin)
@@ -136,7 +139,7 @@ int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, in
     int ansRoot = Tree[index];
     if (ansRoot == -1)
         return -1;
-    if (intervalBegin >= a && intervalBegin + intervalSize - 1 <= b)
+    if (a <= intervalBegin && intervalBegin + intervalSize - 1 <= b)
         return ansRoot;
     int ans1 = DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b);
     int ans2 = DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b);
