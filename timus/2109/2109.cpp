@@ -3,6 +3,7 @@
 #include <ios>
 #include <iostream>
 #include <utility>
+#include <unordered_map>
 #include <vector>
 
 
@@ -22,6 +23,8 @@ void ReadGraph() {
     int n;
     std::cin >> n;
     std::vector<std::vector<int>> links(n);
+    for (size_t i = 0; i < n; ++i)
+        links.reserve(100);
     for (size_t i = 1; i < n; ++i) {
         int a, b;
         std::cin >> a >> b;
@@ -91,7 +94,25 @@ int FindCommonParent(int a, int b) {
     return result;
 }
 
+
+namespace std {
+    template <>
+    struct hash<std::pair<int, int>>
+    {
+        size_t operator()(const std::pair<int, int> &p) const {
+            return p.first ^ (p.second + 200000);
+        }
+    };
+}
+
+
+std::unordered_map<std::pair<int, int>, int> Cache;
+
 int CommonParent(int a, int b) {
+    auto p = std::make_pair(a, b);
+    auto it = Cache.find(p);
+    if (it != Cache.end())
+        return it->second;
     int diff = Depth[a] - Depth[b];
     if (diff != 0) {
         if (diff > 0)
@@ -99,12 +120,16 @@ int CommonParent(int a, int b) {
         else
             b = GetParent(b, -diff);
     }
-    if (a == b)
+    if (a == b) {
+        Cache[p] = a;
         return a;
+    }
     for (;;) {
         int level = FindCommonParent(a, b);
-        if (level == -1)
+        if (level == -1) {
+            Cache[p] = Parents[a][0];
             return Parents[a][0];
+        }
         a = Parents[a][level];
         b = Parents[b][level];
     }
@@ -139,7 +164,7 @@ void DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, i
     int ansRoot = Tree[index];
     if (ansRoot == -1)
         return;
-    if (a <= intervalBegin && intervalBegin + intervalSize - 1 <= b) {
+    if (a <= intervalBegin && intervalBegin + intervalSize - 1 <= b)  {
         tops.push_back(ansRoot);
         return;
     }
@@ -148,20 +173,13 @@ void DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, i
 }
 
 int CommonParentForInterval(int a, int b) {
-    std::vector<int> tops;
+    static std::vector<int> tops;
+    tops.reserve(50);
     DoCommonParentForInterval(0, 0, (1 << Pow2), a, b, tops);
-    std::sort(tops.begin(), tops.end());
-    tops.erase(std::unique(tops.begin(), tops.end()), tops.end());
-    if (Depth.size() > 1000) {
-        double n = Depth.size();
-        double m = tops.size();
-        if (m > 5 * log(n) / log(2.0))
-            throw 1;
-    }
-    int ans = tops.front();
-    for (auto it = tops.begin() + 1; ans != 0 && it != tops.end(); ++it) {
-        ans = CommonParent(ans, *it);
-    }
+    int ans = -1;
+    for (int v : tops)
+        ans = (ans == -1 ? v : CommonParent(ans, v));
+    tops.clear();
     return ans;
 }
 
@@ -175,6 +193,7 @@ void ProcessQueries() {
 }
 
 int main() {
+    Cache.reserve(10000000);
     std::ios_base::sync_with_stdio(false);
     std::cin.tie(nullptr);
     ReadGraph();
