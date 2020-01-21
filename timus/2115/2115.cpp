@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <ios>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -82,6 +83,8 @@ void Output(const std::string &result) {
 }
 
 int main() {
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(nullptr);
     Output(Work(ReadData()));
     return 0;
 }
