@@ -16,19 +16,18 @@ long long GCD(long long a, long long b) {
 
 long long LCM(long long a, long long b) {
     long long d = GCD(a, b);
-    if (static_cast<double>(a) * b / d > MAX_VALUE)
+    double tmp = static_cast<double>(a) / d * b;
+    if (tmp > MAX_VALUE)
         return -1;
-    return a / d * b;
+    return static_cast<long long>(tmp);
 }
 
-int BinSearch(const std::vector<long long> &lcms, long long d, int a, int b) {
-    if (b == -1)
-        return -1;
-    b += 1;
-    int result = -1;
+const long long *BinSearch(const long long *a, const long long *b, long long d) {
+    ++b;
+    const long long *result = nullptr;
     while (a < b) {
-        int t = a + (b - a) / 2;
-        if (lcms[t] % d != 0) {
+        const long long *t = a + std::distance(a, b) / 2;
+        if (*t % d != 0) {
             result = t;
             a = t + 1;
         } else {
@@ -46,7 +45,7 @@ int main() {
     std::vector<long long> d(n), lcms(n);
     std::vector<int> t(n);
     long long ans = 1;
-    int upperBound = -1;
+    const long long *upperBound = nullptr;
     for (int i = 0; i < n; ++i) {
         std::cin >> d[i] >> t[i];
         if (ans != -1 && t[i] == 1) {
@@ -54,17 +53,17 @@ int main() {
         }
         lcms[i] = ans;
         if (ans != -1)
-            upperBound = i;
+            upperBound = &lcms[i];
     }
-    for (int i = 0; i < n; ++i) {
-        if (i > upperBound)
-            upperBound = -1;
-        if (t[i] == 0) {
-            upperBound = BinSearch(lcms, d[i], i, upperBound);
-        }
-        std::cout << (upperBound == -1 ? -1 : lcms[upperBound]) << std::endl;
+    const long long *di = &d[0], *li = &lcms[0];
+    const int *ti = &t[0];
+    for (int i = 0; i < n; ++i, ++di, ++li, ++ti) {
+        if (upperBound != nullptr && li > upperBound)
+            upperBound = nullptr;
+        if (upperBound != nullptr && *ti == 0)
+            upperBound = BinSearch(li, upperBound, *di);
+        std::cout << (upperBound == nullptr ? -1 : *upperBound) << '\n';
     }
-    //std::cout << std::endl;
     return 0;
 }
 
