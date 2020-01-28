@@ -115,12 +115,13 @@ int CommonParent(int a, int b) {
 }
 
 void BuildIntervalTree() {
-    tree.Pow2 = GreaterOrEqualPow2(graph.Depth.size());
+    int n = graph.Depth.size();
+    tree.Pow2 = GreaterOrEqualPow2(n - 1);
     tree.Tree.resize((1 << (tree.Pow2 + 1)) - 1, -1);
     int levelBegin = (1 << tree.Pow2) - 1, levelSize = (1 << tree.Pow2);
-    for (int i = 0; i < graph.Parents.size(); ++i)
-        tree.Tree[levelBegin + i] = i;
-    while(levelBegin != 0) {
+    for (int i = 0; i < n - 1; ++i)
+        tree.Tree[levelBegin + i] = CommonParent(i, i + 1);
+    while (levelBegin != 0) {
         levelBegin = (levelBegin - 1) / 2;
         levelSize >>= 1;
         for (int i = 0; i < levelSize; ++i) {
@@ -136,31 +137,32 @@ void BuildIntervalTree() {
     }
 }
 
-void DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b, std::vector<int> &tops) {
+int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, int a, int b) {
     if (a > intervalBegin + intervalSize - 1)
-        return;
+        return -1;
     if (b < intervalBegin)
-        return;
+        return -1;
     int ansRoot = tree.Tree[index];
     if (ansRoot == -1)
-        return;
-    if (intervalBegin >= a && intervalBegin + intervalSize - 1 <= b) {
-        tops.push_back(ansRoot);
-        return;
-    }
-    DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b, tops);
-    DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b, tops);
+        return -1;
+    if (intervalBegin >= a && intervalBegin + intervalSize - 1 <= b)
+        return ansRoot;
+    int ans1 = DoCommonParentForInterval(index * 2 + 1, intervalBegin, intervalSize / 2, a, b);
+    int ans2 = DoCommonParentForInterval(index * 2 + 2, intervalBegin + intervalSize / 2, intervalSize / 2, a, b);
+    if (ans1 == -1)
+        return ans2;
+    if (ans2 == -1)
+        return ans1;
+    if (graph.Depth[ans1] < graph.Depth[ans2])
+        return ans1;
+    else
+        return ans2;
 }
 
 int CommonParentForInterval(int a, int b) {
-    static std::vector<int> tops;
-    tops.reserve(100);
-    tops.clear();
-    DoCommonParentForInterval(0, 0, (1 << tree.Pow2), a, b, tops);
-    int ans = -1;
-    for (int v : tops)
-        ans = (ans == -1 ? v : CommonParent(ans, v));
-    return ans;
+    if (a == b)
+        return a;
+    return DoCommonParentForInterval(0, 0, (1 << tree.Pow2), a, b - 1);
 }
 
 void ProcessQueries() {
