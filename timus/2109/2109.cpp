@@ -132,7 +132,7 @@ void BuildIntervalTree() {
             else if (ans1 == -1)
                 tree.Tree[levelBegin + i] = ans2;
             else
-                tree.Tree[levelBegin + i] = CommonParent(ans1, ans2);
+                tree.Tree[levelBegin + i] = (graph.Depth[ans1] < graph.Depth[ans2] ? ans1 : ans2);
         }
     }
 }
@@ -153,10 +153,7 @@ int DoCommonParentForInterval(int index, int intervalBegin, int intervalSize, in
         return ans2;
     if (ans2 == -1)
         return ans1;
-    if (graph.Depth[ans1] < graph.Depth[ans2])
-        return ans1;
-    else
-        return ans2;
+    return (graph.Depth[ans1] < graph.Depth[ans2] ? ans1 : ans2);
 }
 
 int CommonParentForInterval(int a, int b) {
